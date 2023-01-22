@@ -2,7 +2,7 @@ import psycopg2
 from psycopg2 import OperationalError
 
 
-def create_client_db(cur):
+def create_client_db():
     try:
         cur.execute("""
         CREATE TABLE IF NOT EXISTS client (
@@ -20,8 +20,7 @@ def create_client_db(cur):
     except OperationalError as e:
         print(f"Произошла ошибка '{e}'")
 
-
-def insert_phone(cur, phone, email):
+def insert_phone(phone, email):
     try:
         cur.execute("""
             INSERT 
@@ -39,8 +38,7 @@ def insert_phone(cur, phone, email):
     except OperationalError as e:
         print(f"Произошла ошибка '{e}'")
 
-
-def insert_client(cur, name, surname, email):
+def insert_client(name, surname, email):
     try:
         cur.execute("""
             INSERT
@@ -55,28 +53,58 @@ def insert_client(cur, name, surname, email):
     except OperationalError as e:
         print(f"Произошла ошибка '{e}'")
 
-
-def update_client(cur, name, surname, email, new_email):
+def update_name(id, name):
     try:
         cur.execute("""
             UPDATE
                 client
             SET
-                name = %s,
-                surname = %s,
-                "e-mail" = %s
+                name = %s
             WHERE
-                "e-mail" = %s;
-            """,(name, surname, new_email, email))
+                "id" = %s;
+            """,(name, id,))
         if cur.rowcount == 0:
-            print(f'Запись {email} не найдена')
+            print(f'Запись {id} не найдена')
         else:
-            print(f'Данные о клиенте {name} {surname} {new_email} успешно изменены. Старый e-mail: {email}')
+            print(f'Данные о клиенте c ID {id} успешно изменены.')
     except OperationalError as e:
         print(f"Произошла ошибка '{e}'")
 
+def update_surname(id, surname):
+    try:
+        cur.execute("""
+            UPDATE
+                client
+            SET
+                surname = %s
+            WHERE
+                "id" = %s;
+            """,(surname, id,))
+        if cur.rowcount == 0:
+            print(f'Запись {id} не найдена')
+        else:
+            print(f'Данные о клиенте c ID {id} успешно изменены.')
+    except OperationalError as e:
+        print(f"Произошла ошибка '{e}'")
 
-def delete_phone(cur, phone):
+def update_email(id, email):
+    try:
+        cur.execute("""
+            UPDATE
+                client
+            SET
+                "e-mail" = %s
+            WHERE
+                "id" = %s;
+            """,(email, id,))
+        if cur.rowcount == 0:
+            print(f'Запись {id} не найдена')
+        else:
+            print(f'Данные о клиенте c ID {id} успешно изменены.')
+    except OperationalError as e:
+        print(f"Произошла ошибка '{e}'")
+
+def delete_phone(phone):
     try:
         cur.execute("""
             DELETE
@@ -92,8 +120,7 @@ def delete_phone(cur, phone):
     except OperationalError as e:
         print(f"Произошла ошибка '{e}'")
 
-
-def delete_client(cur, email):
+def delete_client(email):
     try:
         cur.execute("""
             DELETE
@@ -123,43 +150,104 @@ def delete_client(cur, email):
     except OperationalError as e:
         print(f"Произошла ошибка '{e}'")
 
-
-def find_client(cur, phone, name, surname, email):
+def find_phone(phone):
     try:
-        if phone == '':
-            cur.execute("""
-                SELECT
-                    name, surname, "e-mail"
-                FROM 
-                    client
-                WHERE
-                    name LIKE %s
-                    AND surname LIKE %s
-                    AND "e-mail" LIKE %s;
-                """,(name, surname, email))
-            for row in cur.fetchall():
-                print(f'Данные о клиенте: {row}')
+        cur.execute("""
+            SELECT
+                c.name, c.surname, c."e-mail", p.number
+            FROM
+                client c
+            JOIN 
+                phone_num p on c.id = p.client_id
+            WHERE
+                %s IN (
+            SELECT
+                number
+            FROM
+                phone_num
+            WHERE
+                client_id = id)
+            """, (phone,))
+        if cur.rowcount == 0:
+            print(f'Телефон: {phone} не найден')
         else:
-            cur.execute("""
-                SELECT
-                    name, surname, "e-mail"
-                FROM
-                    client
-                WHERE
-                    %s IN (
-                SELECT
-                    number
-                FROM
-                    phone_num
-                WHERE
-                    client_id = id)
-                """, (phone,))
-            if cur.rowcount == 0:
-                print(f'Телефон {phone} не найден')
-            else:
-                print(f'Телефон {phone}')
-                print(f'Данные о клиенте: {cur.fetchall()}')
-        conn.commit()
+            print(f'Телефон: {phone}')
+            print(f'Данные о клиенте: {cur.fetchall()}')
+    except OperationalError as e:
+        print(f"Произошла ошибка '{e}'")
+
+def find_id(id):
+    try:
+        cur.execute("""
+            SELECT
+                c.name, c.surname, c."e-mail"
+            FROM
+                client c
+            WHERE
+                c.id = %s
+            """, (id,))
+        if cur.rowcount == 0:
+            print(f'ID: {id} не найден')
+        else:
+            print(f'ID: {id}')
+            print(f'Данные о клиенте: {cur.fetchall()}')
+    except OperationalError as e:
+        print(f"Произошла ошибка '{e}'")
+
+def find_name(name):
+    try:
+        cur.execute("""
+            SELECT
+                c.name, c.surname, c."e-mail"
+            FROM 
+                client c
+            WHERE
+                c.name LIKE %s;
+            """,(name,))
+        index = 0
+        for row in cur.fetchall():
+            index += 1
+            print(f'Данные о клиенте: {row}')
+        if index == 0:
+            print('Таких данных нет')
+    except OperationalError as e:
+        print(f"Произошла ошибка '{e}'")
+
+def find_surname(surname):
+    try:
+        cur.execute("""
+            SELECT
+                c.name, c.surname, c."e-mail"
+            FROM 
+                client c
+            WHERE
+                c.surname LIKE %s;
+            """,(surname,))
+        index = 0
+        for row in cur.fetchall():
+            index += 1
+            print(f'Данные о клиенте: {row}')
+        if index == 0:
+            print('Таких данных нет')
+    except OperationalError as e:
+        print(f"Произошла ошибка '{e}'")
+
+def find_email(email):
+    try:
+        cur.execute("""
+            SELECT
+                c.name, c.surname, c."e-mail"
+            FROM 
+                client c
+            WHERE
+                c."e-mail" LIKE %s;
+            """,(email,))
+        index = 0
+        for row in cur.fetchall():
+            index += 1
+            print(f'Данные о клиенте: {row}')
+        if index == 0:
+            print('Таких данных нет')
     except OperationalError as e:
         print(f"Произошла ошибка '{e}'")
 
@@ -172,27 +260,30 @@ if __name__ == '__main__':
     with psycopg2.connect(database=database, user=user, password=password) as conn:
         with conn.cursor() as cur:
             
-            create_client_db(cur)
+            create_client_db()
 
-            insert_client(cur, 'Александр', 'Дуругян', 'фв@нф.кг')
-            insert_client(cur, 'Дмитрий', 'Бычков', 'tsuruta@verizon.net')
-            insert_client(cur, 'Герман', 'Маслов', 'engelen@icloud.com')
-            insert_client(cur, 'Вера', 'Дьякова','jsmith@att.net')
-            insert_client(cur, 'Ева', 'Сорокина', 'lridener@optonline.net')
-            insert_client(cur, 'Лука', 'Наумов', 'danny@live.com')
-            insert_client(cur, 'Вера', 'Бондарева', 'fairbank@att.net')
-            insert_client(cur, 'Алексей', 'Лукьянов', 'kudra@aol.com')
-            insert_client(cur, 'Денис', 'Макеев', 'ewaters@aol.com')
+            insert_client('Александр', 'Дуругян', 'фв@нф.кг')
+            insert_client('Дмитрий', 'Бычков', 'tsuruta@verizon.net')
+            insert_client('Герман', 'Маслов', 'engelen@icloud.com')
+            insert_client('Вера', 'Дьякова','jsmith@att.net')
+            insert_client('Ева', 'Сорокина', 'lridener@optonline.net')
+            insert_client('Лука', 'Наумов', 'danny@live.com')
+            insert_client('Вера', 'Бондарева', 'fairbank@att.net')
+            insert_client('Алексей', 'Лукьянов', 'kudra@aol.com')
+            insert_client('Денис', 'Макеев', 'ewaters@aol.com')
 
-            insert_phone(cur, '6514549557', 'фв@нф.кг')
-            insert_phone(cur, '6514549558', 'фв@нф.кг')
-            insert_phone(cur, '9761452480', 'tsuruta@verizon.net')
+            insert_phone('6514549557', 'фв@нф.кг')
+            insert_phone('6514549558', 'фв@нф.кг')
+            insert_phone('9761452480', 'tsuruta@verizon.net')
+            insert_phone('9761452234', 'ewaters@aol.com')
 
-            update_client(cur, name='Александр', surname='Дуругян', email='фв@нф.кг',
-                        new_email='ad@ya.ru')
+            delete_phone('6514549557')
 
-            delete_phone(cur, '6514549557')
+            delete_client('ad@ya.ru')
 
-            delete_client(cur, 'ad@ya.ru')
+            update_name('3', 'Александр')
+            update_surname('3', 'Дуругян')
+            update_email('3', 'ad@ya.ru')
 
-            find_client(cur, '', '%', '%', '%@aol%')
+            find_phone('9761452480')
+            find_id('3')
